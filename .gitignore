@@ -3,3 +3,6 @@ config.yaml
 /migration/*
 
 bin/*
+
+server_bin
+strace.log
