@@ -12,7 +12,7 @@ Melalui aplikasi ini, saya berharap siswa bisa mendapat gambaran yang jelas meng
 
 ## Contributing
 
-Kontribusi terbuka bagi siapa saja yang ingin mengembangkan project ini
+PR Aja dulu bangg.... amann... terbuka kok 
 
 ---
 
@@ -30,7 +30,6 @@ Kontribusi terbuka bagi siapa saja yang ingin mengembangkan project ini
 - **Language:** Go (Golang)
 - **Database:** MySQL 
 - **Framework:** Native
-
 
 ---
 
