@@ -1,11 +1,17 @@
-# 🏠 KOS Finder
+# 🏠 KOS Finder ( On Development, 10% progress)
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Go Version](https://img.shields.io/badge/go-1.21-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+## Latar Belakang
+KOS Finder adalah aplikasi yang saya kembangkan untuk membantu para siswa SMK RUS untuk mencari kos-kosan. Di lingkungan tempat tinggal saya, terdapat sebuah sekolah yang siswanya sebagian berasal dari luar kota ( SMK RUS ). Berdasarkan hasil survei, mereka ketika awal masuk kebingungan dalam hal mencari kos yang cocok. Seringkali mereka tidak ada gambaran sama sekali terhadap kos yang akan mereka tinggali. Mulai dari tidak tahu lokasi kos, harga kos, bentuk bangunannya, hingga fasilitas yang tersedia di sana. Hal ini membuat mereka ragu untuk menentukan kos yang cocok dan nyaman untuk tempat tinggal. 
+ 
+Melalui aplikasi ini, saya berharap siswa bisa mendapat gambaran jelas mengenai kos-kosan yang ada di sekitar sekolah. KOS Finder memberikan informasi seputar fasilitas kamar, kamar mandi, lokasi kos, hingga foto-foto bangunan kos, supaya mereka bisa memilih tempat tinggal yang sesuai kebutuhan dengan lebih mudah dan percaya diri.
+---
 
-KOS Finder adalah aplikasi pencari kos untuk membantu siswa atau pendatang menemukan tempat tinggal dengan mudah dan transparan.  
-Dikembangkan karena makin banyak kebutuhan akan informasi kos di sekitar sekolah, khususnya siswa dari luar kota yang masih kesulitan mencari kos dengan info lengkap mengenai lokasi, fasilitas, dan peraturan.
+## Contributing
+
+Kontribusi terbuka bagi siapa saja yang ingin mengembangkan project ini
 
 ---
 
@@ -59,11 +65,7 @@ Dikembangkan karena makin banyak kebutuhan akan informasi kos di sekitar sekolah
 
 ---
 
-## Contributing
 
-Kontribusi terbuka bagi siapa saja yang ingin mengembangkan project ini
-
----
 
 
 
