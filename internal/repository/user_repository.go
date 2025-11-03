@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/dettarune/kos-finder/internal/entity"
+	"github.com/dettarune/kos-finder/internal/model"
 )
 
 type UserRepo struct {
@@ -16,7 +16,7 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-func (r *UserRepo) FindUserByUsernameOrEmail(ctx context.Context, username, email string) (*entity.User, error) {
+func (r *UserRepo) FindUserByUsernameOrEmail(ctx context.Context, username, email string) (*model.RegisterRequest, error) {
 	query := `
 		SELECT id, email, full_name, username, password, phone, role
 		FROM users
@@ -25,7 +25,7 @@ func (r *UserRepo) FindUserByUsernameOrEmail(ctx context.Context, username, emai
 	`
 	row := r.db.QueryRowContext(ctx, query, username, email)
 
-	var user entity.User
+	var user model.RegisterRequest
 	err := row.Scan(
 		&user.Id,
 		&user.Email,
@@ -33,7 +33,6 @@ func (r *UserRepo) FindUserByUsernameOrEmail(ctx context.Context, username, emai
 		&user.Username,
 		&user.Password,
 		&user.Phone,
-		&user.Role,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -46,7 +45,7 @@ func (r *UserRepo) FindUserByUsernameOrEmail(ctx context.Context, username, emai
 }
 
 
-func (r *UserRepo) InsertUser(ctx context.Context, user *entity.User) error {
+func (r *UserRepo) InsertUser(ctx context.Context, user *model.RegisterRequest) error {
 	query := `
 		INSERT INTO users (email, full_name, username, password, phone, role)
 		VALUES (?, ?, ?, ?, ?, ?)
@@ -58,7 +57,6 @@ func (r *UserRepo) InsertUser(ctx context.Context, user *entity.User) error {
 		user.Username,
 		user.Password,
 		user.Phone,
-		user.Role,
 	)
 
 	if err != nil {

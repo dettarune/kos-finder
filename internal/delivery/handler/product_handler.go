@@ -5,14 +5,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type ProductHandler struct {
-	ProductUseCase *usecase.ProductUseCase
+type KosHandler struct {
+	KosUseCase *usecase.KosUseCase
 	log     *logrus.Logger
 }
 
-func NewProductHandler(usecase *usecase.ProductUseCase, log *logrus.Logger) *ProductHandler {
-	return &ProductHandler{
-		ProductUseCase: usecase,
+func NewKosHandler(usecase *usecase.KosUseCase, log *logrus.Logger) *KosHandler {
+	return &KosHandler{
+		KosUseCase: usecase,
 		log:     log,
 	}
 }

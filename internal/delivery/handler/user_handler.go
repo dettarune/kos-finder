@@ -2,15 +2,12 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
 
-	"github.com/dettarune/kos-finder/internal/entity"
 	"github.com/dettarune/kos-finder/internal/model"
 	"github.com/dettarune/kos-finder/internal/usecase"
-	"github.com/dettarune/kos-finder/internal/util"
-	"github.com/go-playground/validator/v10"
+	"github.com/dettarune/kos-finder/internal/exceptions"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,104 +17,101 @@ type UserHandler struct {
 }
 
 func NewUserHandler(usecase *usecase.UserUseCase, log *logrus.Logger) *UserHandler {
-	return &UserHandler{
-		usecase: usecase,
-		log:     log,
-	}
+	return &UserHandler{usecase: usecase, log: log}
 }
 
 func (h *UserHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	var user entity.User
+	var user model.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body", nil)
+		model.BadRequestResponse(w, "Format JSON tidak valid")
 		return
 	}
 
 	if err := h.usecase.Register(r.Context(), &user); err != nil {
-		var ce *util.CustomError
-		if ok := errors.As(err, &ce); ok {
-			writeJSONError(w, ce.StatusCode, ce.Message, nil)
-			return
-		}
-
-		var ve validator.ValidationErrors
-		if errors.As(err, &ve) {
-			errs := make(map[string]string)
-			for _, fe := range ve {
-				errs[fe.Field()] = fe.Tag()
-			}
-			writeJSONError(w, http.StatusBadRequest, "Validation failed", errs)
-			return
-		}
-
-		writeJSONError(w, http.StatusInternalServerError, err.Error(), nil)
+		h.handleError(w, err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "User registered successfully. Please check your email for verification.",
+	model.SuccessResponse(w, http.StatusCreated, "Registration successful. Please check your email for verification token", nil)
+}
+
+func (h *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var req model.LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		model.BadRequestResponse(w, "Format JSON tidak valid")
+		return
+	}
+
+	token, err := h.usecase.Login(r.Context(), &req)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "Authorization",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(24 * time.Hour),
+		// Secure:   true, //(HTTPS only)
+	})
+
+	model.SuccessResponse(w, http.StatusOK, "Login successful", map[string]interface{}{
+		"token":      token,
+		"expires_in": 86400,
 	})
 }
 
-func writeJSONError(w http.ResponseWriter, status int, message string, details any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	resp := map[string]any{"message": message}
-	if details != nil {
-		resp["errors"] = details
+func (h *UserHandler) VerifyHandler(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		var req struct {
+			Token string `json:"token"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			token = req.Token
+		}
 	}
-	json.NewEncoder(w).Encode(resp)
+
+	if token == "" {
+		model.BadRequestResponse(w, "Verification token is required")
+		return
+	}
+
+	if err := h.usecase.VerifyPassword(r.Context(), token); err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	model.SuccessResponse(w, http.StatusOK, "Email verified successfully. You can now login", nil)
 }
 
-
-// func (h *UserHandler) VerifyHandler(w http.ResponseWriter, r *http.Request) {
-// 	email := r.URL.Query().Get("email")
-// 	if email != "email" && email== "" {
-// 		http.Error(w, "Parameter Must be email", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	if err := h.usecase.VerifyWithEmail(r.Context(), email); err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-	
-
-// 	w.WriteHeader(http.StatusOK)
-// 	json.NewEncoder(w).Encode(map[string]string{
-// 		"message": fmt.Sprintf("Success Sending Email to %s", email),
-// 	})
-// }
-
-
-func (h *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-    var reqUser model.UserLogin
-    if err := json.NewDecoder(r.Body).Decode(&reqUser); err != nil {
-        http.Error(w, "invalid request body", http.StatusBadRequest)
-        return
-    }
-
-    token, err := h.usecase.Login(r.Context(), &reqUser)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusUnauthorized)
-        return
-    }
-
+func (h *UserHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-        Name:     "Authorization",
-        Value:    token,
-        Path:     "/",
-        HttpOnly: true,
-        Secure:   false,
-        SameSite: http.SameSiteNoneMode,
-        Expires:  time.Now().Add(1 * time.Hour),
-    })
-	w.WriteHeader(http.StatusOK)
-	w.Header().Add("Authorization", token)
-    json.NewEncoder(w).Encode(map[string]string{
-        "message": "User Successfully Logged In",
-	"status": http.StatusText(http.StatusOK),
-    })
+		Name:     "Authorization",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(-1 * time.Hour), 
+		MaxAge:   -1,
+	})
+
+	model.SuccessResponse(w, http.StatusOK, "Logout successful", nil)
+}
+
+func (h *UserHandler) handleError(w http.ResponseWriter, err error) {
+	switch e := err.(type) {
+	case *model.ValidationError:
+		model.ErrorResponse(w, e.StatusCode, e.Message, e.Errors)
+
+	case exceptions.GlobalError:
+		model.ErrorResponse(w, e.GetCode(), e.Error(), nil)
+
+	default:
+		h.log.WithError(err).Error("Internal error")
+		model.InternalServerErrorResponse(w)
+	}
 }

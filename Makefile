@@ -2,7 +2,7 @@ APP_NAME=kos-finder
 BINARY=bin/$(APP_NAME)
 
 DB_USERNAME=detarune
-DB_NAME=kos-finder
+DB_NAME=kos_finder
 
 build:
 	go build -o $(BINARY) ./cmd/api/main.go

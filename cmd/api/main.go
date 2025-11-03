@@ -20,27 +20,20 @@ func main() {
 
 	db := db.NewDatabase(viper, log)
 
-	//util
 	tokenUtil := util.NewTokenUtils(viper) 
 
-	//smtp
 	smtpClient := util.NewSMTP(viper)
 
-	//repository
 	userRepo := repository.NewUserRepo(db)
 	productRepo := repository.NewProductRepo(db)
 	
-	//usecase
 	userUseCase := usecase.NewUserUseCase(userRepo, validator, log, smtpClient, tokenUtil)
-	productUseCase := usecase.NewProductUseCase(productRepo, validator, log)
+	kosUsecase := usecase.NewKosUseCase(productRepo, validator, log)
 
-	//handler
 	UserHandler := handler.NewUserHandler(userUseCase, log)
-	ProductHandler := handler.NewProductHandler(productUseCase, log)
+	kosHandler := handler.NewKosHandler(kosUsecase, log)
 
-	
-	// router
-	router := routes.NewRouterConfig(UserHandler, ProductHandler)
+	router := routes.NewRouterConfig(UserHandler, kosHandler)
 
 	router.SetupRoutes()
 

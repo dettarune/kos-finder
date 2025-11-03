@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_role (role)
 );
 
-
 CREATE TABLE IF NOT EXISTS provinces (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -223,7 +222,7 @@ CREATE TABLE IF NOT EXISTS kos_images (
     INDEX idx_category (category_id),
     INDEX idx_room_type (room_type_id),
     INDEX idx_cover (kos_id, is_cover)
-) 
+);
 
 
 CREATE TABLE IF NOT EXISTS reviews (
@@ -248,5 +247,5 @@ CREATE TABLE IF NOT EXISTS reviews (
     INDEX idx_user (user_id),
     INDEX idx_rating (rating),
     INDEX idx_verified (is_verified)
-) 
+) ;
 

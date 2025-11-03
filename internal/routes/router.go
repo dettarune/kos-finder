@@ -11,10 +11,10 @@ import (
 type RouteConfig struct {
 	Router         *mux.Router
 	UserHandler    *handler.UserHandler
-	ProductHandler *handler.ProductHandler
+	ProductHandler *handler.KosHandler
 }
 
-func NewRouterConfig(userHandler *handler.UserHandler, productHandler *handler.ProductHandler) *RouteConfig {
+func NewRouterConfig(userHandler *handler.UserHandler, productHandler *handler.KosHandler) *RouteConfig {
 	return &RouteConfig{
 		Router:         mux.NewRouter(),
 		UserHandler:    userHandler,

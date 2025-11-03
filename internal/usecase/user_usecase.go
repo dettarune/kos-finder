@@ -2,9 +2,8 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/dettarune/kos-finder/internal/entity"
+	"github.com/dettarune/kos-finder/internal/exceptions"
 	"github.com/dettarune/kos-finder/internal/model"
 	"github.com/dettarune/kos-finder/internal/repository"
 	"github.com/dettarune/kos-finder/internal/util"
@@ -31,14 +30,19 @@ func NewUserUseCase(repo *repository.UserRepo, validator *validator.Validate, lo
 	}
 }
 
-func (u *UserUseCase) Register(ctx context.Context, req *entity.User) error {
+func (u *UserUseCase) Register(ctx context.Context, req *model.RegisterRequest) error {
 	if err := u.validator.Struct(req); err != nil {
-		return fmt.Errorf("invalid request body: %w", err)
+		if verr, ok := err.(validator.ValidationErrors); ok {
+			return exceptions.NewFailedValidationError(&verr)
+		}
+		u.log.Error("Validation parsing error:", err)
+		return exceptions.NewBadRequestError("invalid request body")
 	}
 
 	existingUser, err := u.repo.FindUserByUsernameOrEmail(ctx, req.Username, req.Email)
 	if err != nil {
-		return err
+		u.log.WithError(err).Error("failed to check existing user")
+		return exceptions.NewInternalServerError()
 	}
 
 	if existingUser != nil {
@@ -47,90 +51,93 @@ func (u *UserUseCase) Register(ctx context.Context, req *entity.User) error {
 		}
 	}
 
-	hashedPW, err := bcrypt.GenerateFromPassword([]byte(req.Password), 5)
+	hashedPW, err := util.HashPassword(req.Password)
 	if err != nil {
-		return err
+		u.log.WithError(err).Error("failed to hash password")
+		return exceptions.NewInternalServerError()
 	}
 	req.Password = string(hashedPW)
 
 	if err := u.repo.InsertUser(ctx, req); err != nil {
-		return err
+		u.log.WithError(err).Error("failed to insert user")
+		return exceptions.NewInternalServerError()
 	}
 
-	token, err := u.tokenUtil.CreateToken(req)
+	token, err := u.tokenUtil.CreateToken(&model.CreateToken{
+		Username: req.Username,
+	})
 	if err != nil {
-		return err
+		u.log.WithError(err).Error("failed to create verification token")
+		return exceptions.NewInternalServerError()
 	}
 
 	if err := u.mail.SendMail("Verification Token", token, req.Email); err != nil {
-		return fmt.Errorf("failed to send verification email: %w", err)
+		u.log.WithError(err).Error("failed to send verification email")
+		return exceptions.NewInternalServerError()
 	}
 
+	u.log.Infof("User %s registered successfully", req.Username)
 	return nil
 }
 
+func (u *UserUseCase) VerifyPassword(ctx context.Context, verifyToken string) error {
+	if verifyToken == "" {
+		return exceptions.NewBadRequestError("Verify Token Not Found")
+	}
 
-func (u *UserUseCase) Login(ctx context.Context, reqUser *model.UserLogin) (string, error) {
+	claims, err := u.tokenUtil.ParseToken(verifyToken)
+	if err != nil {
+		u.log.WithError(err).Error("failed to parse verification token")
+		return exceptions.NewUnauthorizedError("Invalid or expired token")
+	}
+
+	user, err := u.repo.FindUserByUsernameOrEmail(ctx, claims.Username, "")
+	if err != nil {
+		u.log.WithError(err).Error("failed to find user")
+		return exceptions.NewInternalServerError()
+	}
+
+	if user == nil {
+		return exceptions.NewBadRequestError("User not found")
+	}
+
+	u.log.Infof("User %s verified successfully", claims.Username)
+	return nil
+}
+
+func (u *UserUseCase) Login(ctx context.Context, reqUser *model.LoginRequest) (string, error) {
+	if err := u.validator.Struct(reqUser); err != nil {
+		if verr, ok := err.(validator.ValidationErrors); ok {
+			return "", exceptions.NewFailedValidationError(&verr)
+		}
+		u.log.Error("Validation parsing error:", err)
+		return "", exceptions.NewBadRequestError("invalid request body")
+	}
+
 	user, err := u.repo.FindUserByUsernameOrEmail(ctx, reqUser.Username, reqUser.Username)
 	if err != nil {
-		u.log.Error("Account Not Found:", reqUser.Username)
-		return "", fmt.Errorf("account not found")
+		u.log.WithError(err).Error("failed to find user")
+		return "", exceptions.NewInternalServerError()
 	}
+	
 	if user == nil {
-		u.log.Error("User Not Found:", reqUser.Username)
-		return "", fmt.Errorf("account not found")
+		u.log.Warnf("User not found: %s", reqUser.Username)
+		return "", exceptions.NewBadRequestError("invalid credentials")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(reqUser.Password)); err != nil {
-		u.log.Error("Invalid Password for:", reqUser.Username)
-		return "", fmt.Errorf("invalid password")
+		u.log.Warnf("Invalid password for user: %s", reqUser.Username)
+		return "", exceptions.NewBadRequestError("invalid credentials")
 	}
 
-	jwtToken, err := u.tokenUtil.CreateToken(user)
+	jwtToken, err := u.tokenUtil.CreateToken(&model.CreateToken{
+		Username: user.Username,
+	})
 	if err != nil {
-		u.log.Error("Failed to create JWT for:", reqUser.Username, "err:", err)
-		return "", fmt.Errorf("failed to create token")
+		u.log.WithError(err).Error("failed to create token")
+		return "", exceptions.NewInternalServerError()
 	}
 
-	u.log.Info("User logged in:", reqUser.Username)
+	u.log.Infof("User logged in successfully: %s", reqUser.Username)
 	return jwtToken, nil
 }
-
-// func (u *UserUseCase) VerifyAccount() (string, error) {
-
-// }
-
-func (u *UserUseCase) VerifyWithEmail(ctx context.Context, mail string) error{
-	err := u.mail.SendMail("OIOIOOIOIO", "ini aja test anu, ", mail)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// func (u *UserUseCase) VerifyWithEmail(ctx context.Context, mail string) error{
-// 	verifyToken := uuid.New()
-// 	err := u.mail.SendMail("OIOIOOIOIO", "ini aja test anu, ", mail)
-// 	if err != nil {
-// 		return err
-// 	}
-// func (u *UserUseCase) VerifyWithEmail(ctx context.Context, mail string) error{
-// 	verifyToken := uuid.New()
-// 	err := u.mail.SendMail("OIOIOOIOIO", "ini aja test anu, ", mail)
-// 	if err != nil {
-// 		return err
-// 	}
-// func (u *UserUseCase) VerifyWithEmail(ctx context.Context, mail string) error{
-// 	verifyToken := uuid.New()
-// 	err := u.mail.SendMail("OIOIOOIOIO", "ini aja test anu, ", mail)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// 	return nil
-// }
-
-// 	return nil
-// }
