@@ -5,31 +5,41 @@ import (
 	"net/http"
 
 	"github.com/dettarune/kos-finder/internal/delivery/handler"
+	"github.com/dettarune/kos-finder/internal/middleware"
 	"github.com/gorilla/mux"
 )
 
 type RouteConfig struct {
 	Router         *mux.Router
 	UserHandler    *handler.UserHandler
-	ProductHandler *handler.KosHandler
+	KosHandler *handler.KosHandler
+	AuthMiddleware *middleware.AuthMiddleware
 }
 
-func NewRouterConfig(userHandler *handler.UserHandler, productHandler *handler.KosHandler) *RouteConfig {
+func NewRouterConfig(userHandler *handler.UserHandler, productHandler *handler.KosHandler, authmiddleware *middleware.AuthMiddleware) *RouteConfig {
 	return &RouteConfig{
 		Router:         mux.NewRouter(),
 		UserHandler:    userHandler,
-		ProductHandler: productHandler,
+		KosHandler: productHandler,
+		AuthMiddleware: authmiddleware,
 	}
 }
 
-func (c *RouteConfig) SetupRoutes() {
-	c.Router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+func (r *RouteConfig) SetupGuestRoutes() {
+	r.Router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Hello 2205"))
 	}).Methods("GET")
 
-	c.Router.HandleFunc("/api/register", c.UserHandler.RegisterHandler).Methods("POST")
-	c.Router.HandleFunc("/api/login", c.UserHandler.LoginHandler).Methods("POST")
+	r.Router.HandleFunc("/api/register", r.UserHandler.RegisterHandler).Methods("POST")
+	r.Router.HandleFunc("/api/login", r.UserHandler.LoginHandler).Methods("POST")
+	r.Router.HandleFunc("/api/auth/verify", r.UserHandler.VerifyHandler).Methods("POST")
+}
 
-	// c.Router.HandleFunc("/api/products", c.ProductHandler.CreateProductHandler).Methods("POST")
-	// c.Router.HandleFunc("/api/products", c.ProductHandler.GetProductsHandler).Methods("GET")
+func (r *RouteConfig) SetupAuthRoutes() {
+	protected := r.Router.PathPrefix("/api").Subrouter()
+
+	protected.Use(r.AuthMiddleware.Authenticate)
+
+	protected.HandleFunc("/kos",r.KosHandler. )
+
 }

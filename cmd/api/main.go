@@ -3,9 +3,10 @@ package main
 import (
 	"net/http"
 
-	"github.com/dettarune/kos-finder/internal/config"
 	"github.com/dettarune/kos-finder/db"
+	"github.com/dettarune/kos-finder/internal/config"
 	"github.com/dettarune/kos-finder/internal/delivery/handler"
+	"github.com/dettarune/kos-finder/internal/middleware"
 	"github.com/dettarune/kos-finder/internal/repository"
 	"github.com/dettarune/kos-finder/internal/routes"
 	"github.com/dettarune/kos-finder/internal/usecase"
@@ -33,9 +34,13 @@ func main() {
 	UserHandler := handler.NewUserHandler(userUseCase, log)
 	kosHandler := handler.NewKosHandler(kosUsecase, log)
 
-	router := routes.NewRouterConfig(UserHandler, kosHandler)
+	authmiddleware := middleware.NewAuthMiddleware(tokenUtil)
 
-	router.SetupRoutes()
+	router := routes.NewRouterConfig(UserHandler, kosHandler,authmiddleware)
+
+	router.SetupGuestRoutes()
+	router.SetupAuthRoutes()
+
 
 	log.Info("db info : ", db)
 	log.Info("\nServer started at http://localhost:2205")

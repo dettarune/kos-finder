@@ -29,7 +29,7 @@ func (t *TokenUtil) CreateToken(payload *model.CreateToken) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": payload.Username,
 		"role":     "Customer",
-		"exp":      time.Now().Add(time.Hour).Unix(), 
+		"exp":      time.Now().Add(time.Hour).Unix(),
 	})
 
 	jwtToken, err := token.SignedString([]byte(t.SecretKey))
@@ -43,12 +43,16 @@ func (t *TokenUtil) CreateToken(payload *model.CreateToken) (string, error) {
 func (t *TokenUtil) ParseToken(jwtToken string) (*model.TokenClaims, error) {
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-			return nil, fmt.Errorf("unexpected signing method")
+			return nil, fmt.Errorf("unexpected signing method: %s", token.Method.Alg())
 		}
 		return []byte(t.SecretKey), nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
@@ -62,7 +66,7 @@ func (t *TokenUtil) ParseToken(jwtToken string) (*model.TokenClaims, error) {
 	}
 	
 	if expFloat < float64(time.Now().Unix()) {
-		return nil, fmt.Errorf("expired token")
+		return nil, fmt.Errorf("token expired")
 	}
 
 	username, ok := claims["username"].(string)
@@ -75,28 +79,37 @@ func (t *TokenUtil) ParseToken(jwtToken string) (*model.TokenClaims, error) {
 		return nil, fmt.Errorf("invalid role claim")
 	}
 
-	user := &model.TokenClaims{
+	return &model.TokenClaims{
 		Username: username,
 		Role:     role,
-	}
-
-	return user, nil
+	}, nil
 }
 
-func (t *TokenUtil) VerifyJwt(jwtToken string) (*jwt.Token, error) {
+func (t *TokenUtil) VerifyJwt(jwtToken string) error {
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-			return nil, exceptions.NewBadRequestError("Invalid Signing Method")
+			return nil, exceptions.NewBadRequestError("Invalid signing method")
 		}
 		return []byte(t.SecretKey), nil
 	})
 	if err != nil {
-		return nil, exceptions.NewUnauthorizedError("Failed to parse token")
+		return exceptions.NewUnauthorizedError("Failed to parse token")
 	}
 
 	if !token.Valid {
-		return nil, exceptions.NewUnauthorizedError("Token Invalid")
+		return exceptions.NewUnauthorizedError("Invalid token")
 	}
 
-	return token, nil 
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return exceptions.NewUnauthorizedError("Invalid token claims")
+	}
+
+	if expFloat, ok := claims["exp"].(float64); ok {
+		if expFloat < float64(time.Now().Unix()) {
+			return exceptions.NewUnauthorizedError("Token expired")
+		}
+	}
+
+	return nil
 }
