@@ -71,13 +71,17 @@ func NewFailedValidationError(err *validator.ValidationErrors) *model.Validation
 func handleValidationErrorMessage(tag, param, field string) string {
 	switch tag {
 	case "required":
-		return fmt.Sprintf("%s field can't be null", field)
+		return fmt.Sprintf("%s field can't be null", strings.ToLower(field))
 	case "email":
 		return fmt.Sprint("Email must be a valid email")
 	case "min":
 		return fmt.Sprintf("%s field must be at least %s characters", strings.ToLower(field), param)
 	case "max":
 		return fmt.Sprintf("%s field must be at most %s characters", strings.ToLower(field), param)
+	case "oneof":
+		return fmt.Sprintf("%s must be either customer or owner", strings.ToLower(field))
+
+
 	}
-	return "SABARRR, Error Belum dihandle ges. intinya validasi lu error dah"
+    return fmt.Sprintf("%s validation failed on tag %s", field, tag)
 }

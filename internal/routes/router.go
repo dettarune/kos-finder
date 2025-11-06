@@ -30,9 +30,9 @@ func (r *RouteConfig) SetupGuestRoutes() {
 		w.Write([]byte("Hello 2205"))
 	}).Methods("GET")
 
-	r.Router.HandleFunc("/api/register", r.UserHandler.RegisterHandler).Methods("POST")
-	r.Router.HandleFunc("/api/login", r.UserHandler.LoginHandler).Methods("POST")
-	r.Router.HandleFunc("/api/auth/verify", r.UserHandler.VerifyHandler).Methods("POST")
+	r.Router.HandleFunc("/api/auth/register", r.UserHandler.RegisterHandler).Methods("POST")
+	r.Router.HandleFunc("/api/auth/login", r.UserHandler.LoginHandler).Methods("POST")
+	r.Router.HandleFunc("/api/auth/verify", r.UserHandler.VerifyHandler).Methods("GET")
 }
 
 func (r *RouteConfig) SetupAuthRoutes() {
@@ -40,6 +40,6 @@ func (r *RouteConfig) SetupAuthRoutes() {
 
 	protected.Use(r.AuthMiddleware.Authenticate)
 
-	protected.HandleFunc("/kos",r.KosHandler. )
+	// protected.HandleFunc("/kos",r.KosHandler. )
 
 }

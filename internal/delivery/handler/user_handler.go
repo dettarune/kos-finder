@@ -65,27 +65,30 @@ func (h *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) VerifyHandler(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		var req struct {
-			Token string `json:"token"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
-			token = req.Token
-		}
-	}
+    h.log.Info("Verify Start...")
+    token := r.URL.Query().Get("token")
+    if token == "" && r.Method == http.MethodPost {
+        var req struct {
+            Token string `json:"token"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+            model.BadRequestResponse(w, "Invalid request body")
+            return
+        }
+        token = req.Token
+    }
 
-	if token == "" {
-		model.BadRequestResponse(w, "Verification token is required")
-		return
-	}
+    if token == "" {
+        model.BadRequestResponse(w, "Verification token is required")
+        return
+    }
 
-	if err := h.usecase.VerifyPassword(r.Context(), token); err != nil {
-		h.handleError(w, err)
-		return
-	}
+    if err := h.usecase.VerifyEmail(r.Context(), token); err != nil {
+        h.handleError(w, err)
+        return
+    }
 
-	model.SuccessResponse(w, http.StatusOK, "Email verified successfully. You can now login", nil)
+    model.SuccessResponse(w, http.StatusOK, "Email verified successfully. Now you can login!", nil)
 }
 
 func (h *UserHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {

@@ -28,7 +28,7 @@ func NewTokenUtils(v *viper.Viper) *TokenUtil {
 func (t *TokenUtil) CreateToken(payload *model.CreateToken) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": payload.Username,
-		"role":     "Customer",
+		"role":     payload.Role,
 		"exp":      time.Now().Add(time.Hour).Unix(),
 	})
 

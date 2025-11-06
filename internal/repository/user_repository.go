@@ -33,6 +33,7 @@ func (r *UserRepo) FindUserByUsernameOrEmail(ctx context.Context, username, emai
 		&user.Username,
 		&user.Password,
 		&user.Phone,
+		&user.Role,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -51,17 +52,33 @@ func (r *UserRepo) InsertUser(ctx context.Context, user *model.RegisterRequest) 
 		VALUES (?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	result, err := r.db.ExecContext(ctx, query,
 		user.Email,
 		user.Full_name,
 		user.Username,
 		user.Password,
 		user.Phone,
+		user.Role,
 	)
 
 	if err != nil {
 		return err
 	}
 
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rowsAffected == 0 {
+		return errors.New("no rows inserted")
+	}
+
 	return nil
+}
+
+func (r *UserRepo) UpdateUserVerification(ctx context.Context, username string, verified bool) error {
+    query := `UPDATE users SET is_verified = ? WHERE username = ?`
+    _, err := r.db.ExecContext(ctx, query, verified, username)
+    return err
 }

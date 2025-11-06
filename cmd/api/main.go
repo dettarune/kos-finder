@@ -44,7 +44,7 @@ func main() {
 
 	log.Info("db info : ", db)
 	log.Info("\nServer started at http://localhost:2205")
-	if err := http.ListenAndServe(":2255", router.Router); err != nil {
+	if err := http.ListenAndServe(":2205", router.Router); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

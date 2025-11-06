@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dettarune/kos-finder/internal/exceptions"
 	"github.com/dettarune/kos-finder/internal/model"
@@ -71,7 +72,9 @@ func (u *UserUseCase) Register(ctx context.Context, req *model.RegisterRequest) 
 		return exceptions.NewInternalServerError()
 	}
 
-	if err := u.mail.SendMail("Verification Token", token, req.Email); err != nil {
+	registerToken := fmt.Sprintf("http://localhost:2205/api/auth/verify?token=%s", token)
+
+	if err := u.mail.SendMail("Verification Token", registerToken, req.Email); err != nil {
 		u.log.WithError(err).Error("failed to send verification email")
 		return exceptions.NewInternalServerError()
 	}
@@ -80,29 +83,22 @@ func (u *UserUseCase) Register(ctx context.Context, req *model.RegisterRequest) 
 	return nil
 }
 
-func (u *UserUseCase) VerifyPassword(ctx context.Context, verifyToken string) error {
-	if verifyToken == "" {
-		return exceptions.NewBadRequestError("Verify Token Not Found")
-	}
+func (u *UserUseCase) VerifyEmail(ctx context.Context, token string) error {
+    claims, err := u.tokenUtil.ParseToken(token)
+    if err != nil {
+        return err
+    }
 
-	claims, err := u.tokenUtil.ParseToken(verifyToken)
-	if err != nil {
-		u.log.WithError(err).Error("failed to parse verification token")
-		return exceptions.NewUnauthorizedError("Invalid or expired token")
-	}
+    username := claims.Username 
 
-	user, err := u.repo.FindUserByUsernameOrEmail(ctx, claims.Username, "")
-	if err != nil {
-		u.log.WithError(err).Error("failed to find user")
-		return exceptions.NewInternalServerError()
-	}
+	u.log.Trace(username)
 
-	if user == nil {
-		return exceptions.NewBadRequestError("User not found")
-	}
+    err = u.repo.UpdateUserVerification(ctx, username, true)
+    if err != nil {
+        return err
+    }
 
-	u.log.Infof("User %s verified successfully", claims.Username)
-	return nil
+    return nil
 }
 
 func (u *UserUseCase) Login(ctx context.Context, reqUser *model.LoginRequest) (string, error) {
@@ -119,7 +115,7 @@ func (u *UserUseCase) Login(ctx context.Context, reqUser *model.LoginRequest) (s
 		u.log.WithError(err).Error("failed to find user")
 		return "", exceptions.NewInternalServerError()
 	}
-	
+
 	if user == nil {
 		u.log.Warnf("User not found: %s", reqUser.Username)
 		return "", exceptions.NewBadRequestError("invalid credentials")

@@ -2,8 +2,8 @@ package util
 
 import (
 	"fmt"
-	"net/http"
 
+	"github.com/dettarune/kos-finder/internal/exceptions"
 	"github.com/dettarune/kos-finder/internal/model"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -40,11 +40,11 @@ func (e *CustomError) Error() string {
 func CheckAuthConflict(existingUser, reqUser *model.RegisterRequest) error {
 	switch {
 	case existingUser.Username == reqUser.Username && existingUser.Email == reqUser.Email:
-		return &CustomError{http.StatusConflict, "Username and Email are already registered", "Choose different ones"}
+		return exceptions.NewConflictError("Username And Email are already registed")
 	case existingUser.Username == reqUser.Username:
-		return &CustomError{http.StatusConflict, "Username is already registered", "Choose a different username"}
+		return exceptions.NewConflictError("Username are already registed")
 	case existingUser.Email == reqUser.Email:
-		return &CustomError{http.StatusConflict, "Email is already registered", "Choose a different email"}
+		return exceptions.NewConflictError("Email are already registed")
 	default:
 		return nil
 	}

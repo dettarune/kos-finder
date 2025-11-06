@@ -8,4 +8,5 @@ type TokenClaims struct {
 
 type CreateToken struct {
 	Username string
+	Role string 
 }
